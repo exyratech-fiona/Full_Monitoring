@@ -1,0 +1,872 @@
+{
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "name": "Container restarts",
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "expr": "changes(kube_pod_container_status_restarts_total{namespace=~\"$service_namespace\",pod=~\"$pod_name\"}[$__interval]) > 0",
+        "titleFormat": "Container restart",
+        "textFormat": "{{pod}} / {{container}}",
+        "step": "60s"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "sre",
+    "apm",
+    "devopslabs",
+    "opentelemetry",
+    "pipeline",
+    "quick-view"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "DevopsLabs — Telemetry Pipeline Health",
+  "uid": "exora-g360-platform-pipeline-health",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "prometheus_datasource",
+        "label": "Metrics DS",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "current": {
+          "text": "Prometheus",
+          "value": "prometheus"
+        }
+      },
+      {
+        "name": "tempo_datasource",
+        "label": "Traces DS",
+        "type": "datasource",
+        "query": "tempo",
+        "hide": 0,
+        "current": {
+          "text": "Tempo",
+          "value": "tempo"
+        }
+      },
+      {
+        "name": "loki_datasource",
+        "label": "Logs DS",
+        "type": "datasource",
+        "query": "loki",
+        "hide": 0,
+        "current": {
+          "text": "Loki",
+          "value": "loki"
+        }
+      },
+      {
+        "name": "deployment_environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "query": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "description": "Sourced from the metric, not target_info. The OTel Java agent here emits the pre-semconv-1.27 attribute deployment.environment -> label deployment_environment. target_info additionally exposes deployment_environment_name, which does NOT exist on the metric series - reading the variable from target_info produced a value that matched nothing.",
+        "hide": 2
+      },
+      {
+        "name": "service_namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "dev-greenfield",
+          "value": "dev-greenfield"
+        }
+      },
+      {
+        "name": "service_name",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "description": "Sourced from the application metric, NOT from target_info. Prometheus' OTLP receiver turns service.name into the `job` label and strips it from target_info (keep_identifying_resource_attributes only exists in Prometheus 3.2+), so label_values(target_info, service_name) returns nothing on 2.55. promote_resource_attributes does put service_name on the metrics themselves, which is what this queries.",
+        "definition": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "query": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "Exora-G360_Dev_API_Gateway",
+          "value": "Exora-G360_Dev_API_Gateway"
+        }
+      },
+      {
+        "name": "http_operation",
+        "label": "API Route",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "http_method",
+        "label": "Method",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "k8s_workload",
+        "label": "Deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "api-gateway-backend-dev",
+          "value": "api-gateway-backend-dev"
+        }
+      },
+      {
+        "name": "pod_name",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": "$k8s_workload-.*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "log_level",
+        "label": "Log level",
+        "type": "custom",
+        "hide": 0,
+        "description": "Loki 3.x derives detected_level automatically. Set to '.+' to see every line regardless of level.",
+        "query": "error and warn : error|warn,errors only : error,all levels : .+",
+        "options": [
+          {
+            "selected": true,
+            "text": "error and warn",
+            "value": "error|warn"
+          },
+          {
+            "selected": false,
+            "text": "errors only",
+            "value": "error"
+          },
+          {
+            "selected": false,
+            "text": "all levels",
+            "value": ".+"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "error and warn",
+          "value": "error|warn"
+        }
+      },
+      {
+        "name": "traceID",
+        "label": "Selected Trace ID",
+        "type": "textbox",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Populated automatically when you click a row in the API REQUESTS table. You can also paste a trace ID here."
+      },
+      {
+        "name": "min_duration",
+        "label": "Trace min duration",
+        "type": "custom",
+        "hide": 0,
+        "query": "0ms,10ms,50ms,100ms,250ms,500ms,1s,2s,5s",
+        "options": [
+          {
+            "selected": true,
+            "text": "0ms",
+            "value": "0ms"
+          },
+          {
+            "selected": false,
+            "text": "10ms",
+            "value": "10ms"
+          },
+          {
+            "selected": false,
+            "text": "50ms",
+            "value": "50ms"
+          },
+          {
+            "selected": false,
+            "text": "100ms",
+            "value": "100ms"
+          },
+          {
+            "selected": false,
+            "text": "250ms",
+            "value": "250ms"
+          },
+          {
+            "selected": false,
+            "text": "500ms",
+            "value": "500ms"
+          },
+          {
+            "selected": false,
+            "text": "1s",
+            "value": "1s"
+          },
+          {
+            "selected": false,
+            "text": "2s",
+            "value": "2s"
+          },
+          {
+            "selected": false,
+            "text": "5s",
+            "value": "5s"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "0ms",
+          "value": "0ms"
+        }
+      },
+      {
+        "name": "status_min",
+        "label": "Trace min HTTP status",
+        "type": "custom",
+        "hide": 0,
+        "query": "All : 0,4xx and 5xx only : 400,5xx only : 500",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "0"
+          },
+          {
+            "selected": false,
+            "text": "4xx and 5xx only",
+            "value": "400"
+          },
+          {
+            "selected": false,
+            "text": "5xx only",
+            "value": "500"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "0"
+        },
+        "description": "TraceQL numeric floor on span.http.response.status_code. Display text vs substituted value: 'All' -> 0."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "DevopsLabs — Telemetry Pipeline Health",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Check here first whenever other dashboards say 'No data'. Shows whether telemetry is actually making it through the Collector to Prometheus, or being dropped/refused/rejected somewhere in the pipeline."
+      }
+    },
+    {
+      "id": 1101,
+      "title": "Collector — metric points sent vs FAILED, by exporter",
+      "description": "Simple: How much telemetry data is making it out of the pipeline successfully versus being rejected.\n\nNon-zero 'failed' on otlphttp/prometheus is the definitive proof that application metrics are not reaching Prometheus. The most common cause on this stack is out-of-order sample rejection by the Prometheus OTLP write receiver.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_metric_points_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "sent {{exporter}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_metric_points_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "FAILED {{exporter}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "sum by (receiver) (rate(otelcol_receiver_refused_metric_points_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "refused {{receiver}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "decimals": 2,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "(FAILED|refused).*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 1102,
+      "title": "Prometheus OTLP write endpoint — responses by code",
+      "description": "Simple: Whether Prometheus is accepting or rejecting the metrics being pushed to it.\n\nhandler=\"/api/v1/otlp/v1/metrics\". Any code other than 200/204 means Prometheus is rejecting the collector's metric writes.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (code) (rate(prometheus_http_requests_total{handler=~\"/api/v1/otlp.*\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "OTLP {{code}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (code) (rate(prometheus_http_requests_total{handler=\"/api/v1/write\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "remote-write (Tempo generator) {{code}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*(4\\d\\d|5\\d\\d).*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 1103,
+      "title": "Collector — spans & logs sent vs FAILED",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_spans_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "spans sent {{exporter}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_spans_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "spans FAILED {{exporter}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_log_records_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "logs sent {{exporter}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "D",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_log_records_total[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "logs FAILED {{exporter}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "decimals": 2,
+          "custom": {
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*FAILED.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Same success/failure check as above, but for traces and logs instead of metrics."
+    },
+    {
+      "id": 1104,
+      "title": "Collector — export queue & memory-limiter drops",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (otelcol_exporter_queue_size)",
+          "range": true,
+          "instant": false,
+          "legendFormat": "queue size {{exporter}}"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (exporter) (otelcol_exporter_queue_capacity)",
+          "range": true,
+          "instant": false,
+          "legendFormat": "queue capacity {{exporter}}"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "sum by (processor) (rate(otelcol_processor_refused_metric_points_total[$__rate_interval])) or vector(0)",
+          "range": true,
+          "instant": false,
+          "legendFormat": "processor refused {{processor}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "custom": {
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Whether the pipeline is backed up or dropping data because it's overloaded."
+    },
+    {
+      "id": 1105,
+      "title": "SANITY CHECK — what identity labels actually exist on the HTTP metric (ignores all dashboard filters)",
+      "description": "Simple: Shows the real label names on the raw metric, ignoring every filter — use this to catch a label-name mismatch.\n\nDeliberately unfiltered. If this table has rows but the panels above say 'No data', a dashboard VARIABLE is empty or wrong — compare the values here against the filter bar. If this table is empty too, the metric itself is not in Prometheus and the problem is the ingest pipeline, not the dashboard. 'Sample age' is seconds since that series was last written.",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "count by (service_name, k8s_namespace_name, deployment_environment, job) (http_server_request_duration_seconds_count)",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "time() - max by (service_name, k8s_namespace_name, deployment_environment, job) (max_over_time(timestamp(http_server_request_duration_seconds_count)[$__range:1m]))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "service_name",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "k8s_namespace_name 2": true,
+              "deployment_environment 2": true,
+              "job 2": true
+            },
+            "renameByName": {
+              "service_name": "service_name",
+              "k8s_namespace_name 1": "k8s_namespace_name",
+              "deployment_environment 1": "deployment_environment",
+              "job 1": "job",
+              "Value #A": "Series",
+              "Value #B": "Sample age"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sample age"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 180
+                    },
+                    {
+                      "color": "red",
+                      "value": 600
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      }
+    }
+  ]
+}

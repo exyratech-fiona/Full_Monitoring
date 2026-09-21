@@ -1,0 +1,97 @@
+# =====================================================================
+# Grafana datasource provisioning with full three-pillar correlation:
+#
+#   Metrics (Prometheus) --exemplars--> Traces (Tempo)
+#   Traces  (Tempo) --tracesToLogs--> Logs (Loki)
+#   Traces  (Tempo) --tracesToMetrics--> Metrics (Prometheus)
+#   Logs    (Loki) --derivedField trace_id--> Traces (Tempo)
+# =====================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+        jsonData:
+          httpMethod: POST
+          manageAlerts: false
+          # ---------------------------------------------------------
+          # REQUIRED. Grafana derives $__rate_interval from this:
+          #     max($__interval + timeInterval, 4 * timeInterval)
+          #
+          # Without it Grafana assumes a 15s scrape and produces a
+          # ~1m rate window. The OTel Java agent pushes metrics every
+          # 60s, so a 1m window rarely contains two samples and
+          # rate()/histogram_quantile() return NOTHING - verified:
+          # rate[1m] -> 0 series, rate[2m] -> 8 series.
+          #
+          # This is why every $__rate_interval panel was empty while
+          # every $__range panel had data.
+          # ---------------------------------------------------------
+          timeInterval: "60s"
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+              urlDisplayLabel: "View trace"
+
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: '-1h'
+            spanEndTimeShift: '1h'
+            filterByTraceID: true
+            filterBySpanID: false
+            tags:
+              - key: service.name
+                value: service_name
+          tracesToMetrics:
+            datasourceUid: prometheus
+            spanStartTimeShift: '-1h'
+            spanEndTimeShift: '1h'
+            tags:
+              - key: service.name
+                value: service_name
+            queries:
+              - name: 'Request rate'
+                query: 'sum(rate(calls_total{$$__tags}[5m]))'
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+          search:
+            hide: false
+          traceQuery:
+            timeShiftEnabled: true
+          spanBar:
+            type: 'Tag'
+            tag: 'http.status_code'
+
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki:3100
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherType: label
+              matcherRegex: trace_id
+              datasourceUid: tempo
+              url: '$${__value.raw}'
+              urlDisplayLabel: 'View trace'

@@ -1,0 +1,152 @@
+# =====================================================================
+# Prometheus alerting & recording rules. Mounted into Prometheus at
+# /etc/prometheus/rules and evaluated by Prometheus; firing alerts are
+# routed to Alertmanager.
+#
+# NOTE on JVM / HTTP metrics: these come from the OpenTelemetry Java
+# agent -> Collector -> Prometheus exporter. Metric names follow OTel
+# semantic conventions (jvm_memory_used_bytes, calls_total,
+# duration_milliseconds_bucket, ...). If your agent version emits
+# different names, adjust the expressions accordingly.
+# =====================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+data:
+  node.rules.yml: |
+    groups:
+      - name: node-alerts
+        rules:
+          - alert: HighNodeCPU
+            expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU on {{ $labels.instance }}"
+              description: "Node CPU usage is {{ printf \"%.1f\" $value }}% (>85%) for 5m."
+
+          - alert: HighNodeMemory
+            expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory on {{ $labels.instance }}"
+              description: "Node memory usage is {{ printf \"%.1f\" $value }}% (>85%) for 5m."
+
+          - alert: HighDiskUsage
+            expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"})) * 100 > 85
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High disk usage on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+              description: "Filesystem usage is {{ printf \"%.1f\" $value }}% (>85%)."
+
+          - alert: NodeNotReady
+            expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.node }} not ready"
+              description: "Node {{ $labels.node }} has been NotReady for 5m."
+
+  workload.rules.yml: |
+    groups:
+      - name: workload-alerts
+        rules:
+          - alert: PodRestartingFrequently
+            expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restarting"
+              description: "Container {{ $labels.container }} restarted >3 times in 15m."
+
+          - alert: PodCrashLoopBackOff
+            expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "CrashLoopBackOff: {{ $labels.namespace }}/{{ $labels.pod }}"
+              description: "Container {{ $labels.container }} is in CrashLoopBackOff."
+
+          - alert: PodOOMKilled
+            expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "OOMKilled: {{ $labels.namespace }}/{{ $labels.pod }}"
+              description: "Container {{ $labels.container }} was OOMKilled."
+
+  jvm.rules.yml: |
+    groups:
+      - name: jvm-alerts
+        rules:
+          - alert: JVMHeapHigh
+            expr: >
+              sum by (service_name) (jvm_memory_used_bytes{jvm_memory_type="heap"})
+              / sum by (service_name) (jvm_memory_limit_bytes{jvm_memory_type="heap"}) > 0.90
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "JVM heap >90% for {{ $labels.service_name }}"
+              description: "Heap usage is {{ $value | humanizePercentage }} of the limit."
+
+          - alert: JVMHighGCPause
+            expr: rate(jvm_gc_duration_seconds_sum[5m]) / clamp_min(rate(jvm_gc_duration_seconds_count[5m]), 1) > 0.1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High GC pause for {{ $labels.service_name }}"
+              description: "Average GC pause is {{ printf \"%.3f\" $value }}s (>100ms)."
+
+  http.rules.yml: |
+    groups:
+      - name: http-alerts
+        rules:
+          - alert: HTTP5xxErrors
+            expr: >
+              sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[5m]))
+              > 0.05 * sum by (service_name) (rate(calls_total[5m]))
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Elevated 5xx/error rate for {{ $labels.service_name }}"
+              description: "More than 5% of requests are failing over the last 5m."
+
+          - alert: HTTPHighLatency
+            expr: >
+              histogram_quantile(0.95,
+                sum by (le, service_name) (rate(duration_milliseconds_bucket[5m]))) > 1000
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High p95 latency for {{ $labels.service_name }}"
+              description: "p95 request latency is {{ printf \"%.0f\" $value }}ms (>1000ms)."
+
+  postgres.rules.yml: |
+    groups:
+      - name: postgres-alerts
+        rules:
+          - alert: PostgreSQLDown
+            expr: pg_up == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL is down"
+              description: "postgres-exporter reports pg_up=0 for the target database."

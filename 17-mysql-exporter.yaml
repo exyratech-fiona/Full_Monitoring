@@ -1,0 +1,185 @@
+# =====================================================================
+# MySQL Exporter — one Deployment per environment (dev/sit/uat/prod/...),
+# each pointed at that environment's MySQL server. Mirrors the pattern
+# already used for postgres-exporter (12-postgres-exporter.yaml), just
+# repeated per environment since each one is a genuinely separate server.
+#
+# HOW TO USE:
+#   1. Copy the three-object block below (Secret + Deployment + Service)
+#      once per environment.
+#   2. Rename every "dev" to your real environment name (sit/uat/prod/...)
+#      — in metadata.name, labels, and the "environment" label.
+#   3. Fill in DATA_SOURCE_NAME for that environment's real MySQL server.
+#   4. Add a matching static_configs target + label in 01-prometheus.yaml's
+#      "mysql-exporter" job (see the comment there) so Prometheus scrapes it.
+#   5. Delete any example block you don't need (this file ships with two
+#      example environments, "dev" and "prod", as a copy-paste starting point).
+#
+# DATA_SOURCE_NAME format:
+#   CHANGE_ME_USER:CHANGE_ME_PASSWORD@tcp(CHANGE_ME_HOST:3306)/
+# (mysqld_exporter's DSN format differs from postgres-exporter's — no
+# "mysql://" prefix, and the host:port goes inside tcp(...). The trailing
+# slash with no database name is correct — mysqld_exporter reports on all
+# schemas the user can see, not just one.)
+#
+# Use a read-only monitoring user (PROCESS, REPLICATION CLIENT, SELECT
+# privileges) rather than the application's own DB user.
+# =====================================================================
+
+# --------------------------- dev --------------------------------------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-exporter-dev-secret
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mysql-exporter
+    environment: dev
+type: Opaque
+stringData:
+  DATA_SOURCE_NAME: "CHANGE_ME_USER:CHANGE_ME_PASSWORD@tcp(CHANGE_ME_HOST:3306)/"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter-dev
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mysql-exporter
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mysql-exporter
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mysql-exporter
+        environment: dev
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      containers:
+        - name: mysql-exporter
+          image: prom/mysqld-exporter:v0.15.1
+          ports:
+            - name: metrics
+              containerPort: 9104
+          envFrom:
+            - secretRef:
+                name: mysql-exporter-dev-secret
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-exporter-dev
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mysql-exporter
+    environment: dev
+spec:
+  selector:
+    app.kubernetes.io/name: mysql-exporter
+    environment: dev
+  ports:
+    - name: metrics
+      port: 9104
+      targetPort: metrics
+
+# --------------------------- prod (example — duplicate for each real env) ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-exporter-prod-secret
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mysql-exporter
+    environment: prod
+type: Opaque
+stringData:
+  DATA_SOURCE_NAME: "CHANGE_ME_USER:CHANGE_ME_PASSWORD@tcp(CHANGE_ME_HOST:3306)/"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter-prod
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mysql-exporter
+    environment: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mysql-exporter
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mysql-exporter
+        environment: prod
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      containers:
+        - name: mysql-exporter
+          image: prom/mysqld-exporter:v0.15.1
+          ports:
+            - name: metrics
+              containerPort: 9104
+          envFrom:
+            - secretRef:
+                name: mysql-exporter-prod-secret
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-exporter-prod
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mysql-exporter
+    environment: prod
+spec:
+  selector:
+    app.kubernetes.io/name: mysql-exporter
+    environment: prod
+  ports:
+    - name: metrics
+      port: 9104
+      targetPort: metrics

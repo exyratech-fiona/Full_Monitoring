@@ -1,0 +1,86 @@
+# =====================================================================
+# OPTIONAL Ingress (NGINX Ingress Controller assumed).
+#
+# Exposes Grafana, Prometheus, and Alertmanager on host-based routes.
+#  * Requires an ingress controller in the cluster.
+#  * Replace the *.example.com hosts with your own DNS.
+#  * Prometheus & Alertmanager have NO built-in auth — the basic-auth
+#    annotation below adds a gate. Create the secret with:
+#      htpasswd -c auth admin
+#      kubectl -n monitoring create secret generic monitoring-basic-auth --from-file=auth
+#  * For TLS, add a `tls:` block referencing a cert Secret (e.g. cert-manager).
+#
+# Delete this file if you prefer `kubectl port-forward` or a LoadBalancer.
+# =====================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: monitoring-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Prometheus"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prometheus.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: monitoring-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Alertmanager"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: alertmanager.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: alertmanager
+                port:
+                  number: 9093

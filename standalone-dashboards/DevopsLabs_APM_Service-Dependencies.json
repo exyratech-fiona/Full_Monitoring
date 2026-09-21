@@ -1,0 +1,814 @@
+{
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "name": "Container restarts",
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "expr": "changes(kube_pod_container_status_restarts_total{namespace=~\"$service_namespace\",pod=~\"$pod_name\"}[$__interval]) > 0",
+        "titleFormat": "Container restart",
+        "textFormat": "{{pod}} / {{container}}",
+        "step": "60s"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "sre",
+    "apm",
+    "devopslabs",
+    "topology",
+    "quick-view"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "DevopsLabs — Service Dependencies",
+  "uid": "exora-g360-apm-service-dependencies",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "prometheus_datasource",
+        "label": "Metrics DS",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "current": {
+          "text": "Prometheus",
+          "value": "prometheus"
+        }
+      },
+      {
+        "name": "tempo_datasource",
+        "label": "Traces DS",
+        "type": "datasource",
+        "query": "tempo",
+        "hide": 0,
+        "current": {
+          "text": "Tempo",
+          "value": "tempo"
+        }
+      },
+      {
+        "name": "loki_datasource",
+        "label": "Logs DS",
+        "type": "datasource",
+        "query": "loki",
+        "hide": 0,
+        "current": {
+          "text": "Loki",
+          "value": "loki"
+        }
+      },
+      {
+        "name": "deployment_environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "query": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "description": "Sourced from the metric, not target_info. The OTel Java agent here emits the pre-semconv-1.27 attribute deployment.environment -> label deployment_environment. target_info additionally exposes deployment_environment_name, which does NOT exist on the metric series - reading the variable from target_info produced a value that matched nothing.",
+        "hide": 2
+      },
+      {
+        "name": "service_namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "dev-greenfield",
+          "value": "dev-greenfield"
+        }
+      },
+      {
+        "name": "service_name",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "description": "Sourced from the application metric, NOT from target_info. Prometheus' OTLP receiver turns service.name into the `job` label and strips it from target_info (keep_identifying_resource_attributes only exists in Prometheus 3.2+), so label_values(target_info, service_name) returns nothing on 2.55. promote_resource_attributes does put service_name on the metrics themselves, which is what this queries.",
+        "definition": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "query": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "Exora-G360_Dev_API_Gateway",
+          "value": "Exora-G360_Dev_API_Gateway"
+        }
+      },
+      {
+        "name": "http_operation",
+        "label": "API Route",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "http_method",
+        "label": "Method",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "k8s_workload",
+        "label": "Deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "api-gateway-backend-dev",
+          "value": "api-gateway-backend-dev"
+        }
+      },
+      {
+        "name": "pod_name",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": "$k8s_workload-.*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "log_level",
+        "label": "Log level",
+        "type": "custom",
+        "hide": 0,
+        "description": "Loki 3.x derives detected_level automatically. Set to '.+' to see every line regardless of level.",
+        "query": "error and warn : error|warn,errors only : error,all levels : .+",
+        "options": [
+          {
+            "selected": true,
+            "text": "error and warn",
+            "value": "error|warn"
+          },
+          {
+            "selected": false,
+            "text": "errors only",
+            "value": "error"
+          },
+          {
+            "selected": false,
+            "text": "all levels",
+            "value": ".+"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "error and warn",
+          "value": "error|warn"
+        }
+      },
+      {
+        "name": "traceID",
+        "label": "Selected Trace ID",
+        "type": "textbox",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Populated automatically when you click a row in the API REQUESTS table. You can also paste a trace ID here."
+      },
+      {
+        "name": "min_duration",
+        "label": "Trace min duration",
+        "type": "custom",
+        "hide": 0,
+        "query": "0ms,10ms,50ms,100ms,250ms,500ms,1s,2s,5s",
+        "options": [
+          {
+            "selected": true,
+            "text": "0ms",
+            "value": "0ms"
+          },
+          {
+            "selected": false,
+            "text": "10ms",
+            "value": "10ms"
+          },
+          {
+            "selected": false,
+            "text": "50ms",
+            "value": "50ms"
+          },
+          {
+            "selected": false,
+            "text": "100ms",
+            "value": "100ms"
+          },
+          {
+            "selected": false,
+            "text": "250ms",
+            "value": "250ms"
+          },
+          {
+            "selected": false,
+            "text": "500ms",
+            "value": "500ms"
+          },
+          {
+            "selected": false,
+            "text": "1s",
+            "value": "1s"
+          },
+          {
+            "selected": false,
+            "text": "2s",
+            "value": "2s"
+          },
+          {
+            "selected": false,
+            "text": "5s",
+            "value": "5s"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "0ms",
+          "value": "0ms"
+        }
+      },
+      {
+        "name": "status_min",
+        "label": "Trace min HTTP status",
+        "type": "custom",
+        "hide": 0,
+        "query": "All : 0,4xx and 5xx only : 400,5xx only : 500",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "0"
+          },
+          {
+            "selected": false,
+            "text": "4xx and 5xx only",
+            "value": "400"
+          },
+          {
+            "selected": false,
+            "text": "5xx only",
+            "value": "500"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "0"
+        },
+        "description": "TraceQL numeric floor on span.http.response.status_code. Display text vs substituted value: 'All' -> 0."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "DevopsLabs — Service Dependencies",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "What this service calls outbound (and what calls it) — request rate, latency, and error % per downstream destination, plus a visual dependency map."
+      }
+    },
+    {
+      "id": 601,
+      "title": "Service dependency map",
+      "description": "Simple: A visual map of what calls this service and what this service calls, with health shown at each connection.\n\nPROMETHEUS / PromQL over Tempo metrics-generator series (traces_service_graph_*). Dependency overview only — it has no endpoint dimension. Use the trace waterfall for endpoint-level and request-level investigation.",
+      "type": "nodeGraph",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "edges",
+          "editorMode": "code",
+          "expr": "label_join(label_join(label_join(\n  sum by (client, server) (increase(traces_service_graph_request_total{client!=\"\",server!=\"\"}[$__range])) > 0,\n  \"source\", \"\", \"client\"),\n  \"target\", \"\", \"server\"),\n  \"id\", \"->\", \"client\", \"server\")",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "options": {
+        "nodes": {
+          "arcs": []
+        },
+        "edges": {}
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 602,
+      "title": "Outbound HTTP — request rate",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (server_address, http_request_method) (rate(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{http_request_method}} {{server_address}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How often this service calls each external or downstream address."
+    },
+    {
+      "id": 603,
+      "title": "Outbound HTTP — P50 / P95 / P99",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 12,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P50 {{server_address}}",
+          "interval": "10m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P95 {{server_address}}",
+          "interval": "10m"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P99 {{server_address}}",
+          "interval": "10m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How fast each downstream call responds, at typical and slow-case speeds."
+    },
+    {
+      "id": 604,
+      "title": "Outbound HTTP — 5xx %",
+      "description": "Simple: What percent of calls to each downstream address are failing.\n\nPer-destination denominator so a busy destination cannot mask a failing one. Destinations with no 5xx plot a real 0 rather than dropping out of the result - an empty ratio panel is indistinguishable from a broken one.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "100 * (sum by (server_address, http_request_method) (rate(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"5..\"}[$__rate_interval])) or sum by (server_address, http_request_method) (rate(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])) * 0) / sum by (server_address, http_request_method) (rate(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{http_request_method}} {{server_address}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "custom": {
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 605,
+      "title": "Outbound dependencies — summary",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (dep, server_address, http_request_method) (label_join(increase(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"dep\", \" \", \"http_request_method\", \"server_address\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, dep) (label_join(rate(http_client_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"dep\", \" \", \"http_request_method\", \"server_address\")))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, dep) (label_join(rate(http_client_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"dep\", \" \", \"http_request_method\", \"server_address\")))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "editorMode": "code",
+          "expr": "sum by (dep) (label_join(increase(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"5..\"}[$__range]), \"dep\", \" \", \"http_request_method\", \"server_address\")) or sum by (dep) (label_join(increase(http_client_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"dep\", \" \", \"http_request_method\", \"server_address\")) * 0",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "dep",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "dep": true
+            },
+            "indexByName": {
+              "http_request_method": 0,
+              "server_address": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5
+            },
+            "renameByName": {
+              "http_request_method": "Method",
+              "server_address": "Destination",
+              "Value #A": "Calls",
+              "Value #B": "P95",
+              "Value #C": "P99",
+              "Value #D": "5xx"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Calls"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P99"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Calls",
+            "desc": true
+          }
+        ]
+      },
+      "description": "Simple: One table summarizing call volume, speed, and failures for every downstream address."
+    }
+  ]
+}

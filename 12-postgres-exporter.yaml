@@ -1,0 +1,109 @@
+# =====================================================================
+# PostgreSQL Exporter — exposes PostgreSQL metrics (pg_up, connections,
+# transactions, ...) for Prometheus.
+#
+# ACTION REQUIRED: set the real connection string in the Secret below.
+# DATA_SOURCE_NAME format:
+#   postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=disable
+# Use a read-only monitoring role in production.
+# =====================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-exporter-secret
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+type: Opaque
+stringData:
+  # Host/port/db/user found via a real trace's HikariDataSource.getConnection
+  # span (2026-09-18) — Tempo automatically captures these as span attributes.
+  # Password is NEVER captured there (by design) — fill in CHANGE_ME_PASSWORD
+  # yourself before applying.
+  DATA_SOURCE_NAME: "postgresql://oscalappdemo:CHANGE_ME_PASSWORD@192.168.0.164:5438/oscal_grc_demo?sslmode=disable"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+spec:
+  # =====================================================================
+  # SCALED TO ZERO 2026-08-11.
+  #
+  # This exporter has never worked. Its DATA_SOURCE_NAME still points at
+  # the placeholder postgres.default.svc.cluster.local, which does not
+  # resolve:
+  #
+  #   level=ERROR msg="Error opening connection to database"
+  #   err="... dial tcp: lookup postgres.default.svc.cluster.local
+  #        on 10.96.0.10:53: no such host"
+  #
+  # There is no PostgreSQL anywhere in this cluster. The Exora G360
+  # gateway runs on MySQL (confirmed from Tempo spans: db.system=mysql,
+  # db.name=g360_dev_api_gateway).
+  #
+  # It leaked memory on every failed connection attempt and had been
+  # OOMKilled 57 times over 28 days, permanently NotReady. Two
+  # ReplicaSets were stuck alive because the rolling update could never
+  # complete - the new pod never became Ready, so the old one was never
+  # scaled down. Raising the memory limit would only slow the leak.
+  #
+  # To re-enable: set replicas back to 1 AND point DATA_SOURCE_NAME at a
+  # real PostgreSQL instance. For the MySQL the gateway actually uses,
+  # deploy prom/mysqld-exporter instead and add a scrape job for it.
+  # =====================================================================
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-exporter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      containers:
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+          ports:
+            - name: metrics
+              containerPort: 9187
+          envFrom:
+            - secretRef:
+                name: postgres-exporter-secret
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: postgres-exporter
+  ports:
+    - name: metrics
+      port: 9187
+      targetPort: metrics

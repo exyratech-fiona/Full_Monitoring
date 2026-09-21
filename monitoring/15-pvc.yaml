@@ -1,0 +1,79 @@
+# =====================================================================
+# PersistentVolumeClaims for all stateful components.
+#
+# These rely on dynamic provisioning via the cluster's DEFAULT
+# StorageClass. If your cluster has no default class, either:
+#   * uncomment and set `storageClassName` on each claim below, or
+#   * pre-create matching PersistentVolumes.
+# accessModes are ReadWriteOnce; the owning workloads use a Recreate
+# strategy so a single replica cleanly re-attaches the volume.
+# =====================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: standard
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: standard
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tempo-data
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: tempo
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: standard
+  resources:
+    requests:
+      storage: 15Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loki-data
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: standard
+  resources:
+    requests:
+      storage: 15Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-data
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: standard
+  resources:
+    requests:
+      storage: 2Gi

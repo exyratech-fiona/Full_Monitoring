@@ -1,0 +1,1033 @@
+{
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "name": "Container restarts",
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "expr": "changes(kube_pod_container_status_restarts_total{namespace=~\"$service_namespace\",pod=~\"$pod_name\"}[$__interval]) > 0",
+        "titleFormat": "Container restart",
+        "textFormat": "{{pod}} / {{container}}",
+        "step": "60s"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "sre",
+    "apm",
+    "devopslabs",
+    "jvm",
+    "gc",
+    "quick-view"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "DevopsLabs — JVM & Memory (Heap / GC)",
+  "uid": "exora-g360-apm-jvm-memory",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "prometheus_datasource",
+        "label": "Metrics DS",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "current": {
+          "text": "Prometheus",
+          "value": "prometheus"
+        }
+      },
+      {
+        "name": "tempo_datasource",
+        "label": "Traces DS",
+        "type": "datasource",
+        "query": "tempo",
+        "hide": 0,
+        "current": {
+          "text": "Tempo",
+          "value": "tempo"
+        }
+      },
+      {
+        "name": "loki_datasource",
+        "label": "Logs DS",
+        "type": "datasource",
+        "query": "loki",
+        "hide": 0,
+        "current": {
+          "text": "Loki",
+          "value": "loki"
+        }
+      },
+      {
+        "name": "deployment_environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "query": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "description": "Sourced from the metric, not target_info. The OTel Java agent here emits the pre-semconv-1.27 attribute deployment.environment -> label deployment_environment. target_info additionally exposes deployment_environment_name, which does NOT exist on the metric series - reading the variable from target_info produced a value that matched nothing.",
+        "hide": 2
+      },
+      {
+        "name": "service_namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "dev-greenfield",
+          "value": "dev-greenfield"
+        }
+      },
+      {
+        "name": "service_name",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "description": "Sourced from the application metric, NOT from target_info. Prometheus' OTLP receiver turns service.name into the `job` label and strips it from target_info (keep_identifying_resource_attributes only exists in Prometheus 3.2+), so label_values(target_info, service_name) returns nothing on 2.55. promote_resource_attributes does put service_name on the metrics themselves, which is what this queries.",
+        "definition": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "query": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "Exora-G360_Dev_API_Gateway",
+          "value": "Exora-G360_Dev_API_Gateway"
+        }
+      },
+      {
+        "name": "http_operation",
+        "label": "API Route",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "http_method",
+        "label": "Method",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "k8s_workload",
+        "label": "Deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "api-gateway-backend-dev",
+          "value": "api-gateway-backend-dev"
+        }
+      },
+      {
+        "name": "pod_name",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": "$k8s_workload-.*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "log_level",
+        "label": "Log level",
+        "type": "custom",
+        "hide": 0,
+        "description": "Loki 3.x derives detected_level automatically. Set to '.+' to see every line regardless of level.",
+        "query": "error and warn : error|warn,errors only : error,all levels : .+",
+        "options": [
+          {
+            "selected": true,
+            "text": "error and warn",
+            "value": "error|warn"
+          },
+          {
+            "selected": false,
+            "text": "errors only",
+            "value": "error"
+          },
+          {
+            "selected": false,
+            "text": "all levels",
+            "value": ".+"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "error and warn",
+          "value": "error|warn"
+        }
+      },
+      {
+        "name": "traceID",
+        "label": "Selected Trace ID",
+        "type": "textbox",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Populated automatically when you click a row in the API REQUESTS table. You can also paste a trace ID here."
+      },
+      {
+        "name": "min_duration",
+        "label": "Trace min duration",
+        "type": "custom",
+        "hide": 0,
+        "query": "0ms,10ms,50ms,100ms,250ms,500ms,1s,2s,5s",
+        "options": [
+          {
+            "selected": true,
+            "text": "0ms",
+            "value": "0ms"
+          },
+          {
+            "selected": false,
+            "text": "10ms",
+            "value": "10ms"
+          },
+          {
+            "selected": false,
+            "text": "50ms",
+            "value": "50ms"
+          },
+          {
+            "selected": false,
+            "text": "100ms",
+            "value": "100ms"
+          },
+          {
+            "selected": false,
+            "text": "250ms",
+            "value": "250ms"
+          },
+          {
+            "selected": false,
+            "text": "500ms",
+            "value": "500ms"
+          },
+          {
+            "selected": false,
+            "text": "1s",
+            "value": "1s"
+          },
+          {
+            "selected": false,
+            "text": "2s",
+            "value": "2s"
+          },
+          {
+            "selected": false,
+            "text": "5s",
+            "value": "5s"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "0ms",
+          "value": "0ms"
+        }
+      },
+      {
+        "name": "status_min",
+        "label": "Trace min HTTP status",
+        "type": "custom",
+        "hide": 0,
+        "query": "All : 0,4xx and 5xx only : 400,5xx only : 500",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "0"
+          },
+          {
+            "selected": false,
+            "text": "4xx and 5xx only",
+            "value": "400"
+          },
+          {
+            "selected": false,
+            "text": "5xx only",
+            "value": "500"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "0"
+        },
+        "description": "TraceQL numeric floor on span.http.response.status_code. Display text vs substituted value: 'All' -> 0."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "DevopsLabs — JVM & Memory (Heap / GC)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "JVM runtime health — CPU, heap usage vs. max, non-heap memory, garbage collection time/pauses/frequency, thread counts, and loaded classes."
+      }
+    },
+    {
+      "id": 801,
+      "title": "JVM CPU",
+      "description": "Simple: How much CPU the application process itself is using.\n\nv9 queried jvm_cpu_utilization_ratio, which does not exist. The OTel Java agent emits jvm.cpu.recent_utilization -> jvm_cpu_recent_utilization_ratio. Series B derives the same number from jvm_cpu_time_seconds_total / jvm_cpu_count as a fallback for older agent versions.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "100 * avg by (k8s_pod_name) (jvm_cpu_recent_utilization_ratio{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "recent {{k8s_pod_name}}"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "100 * sum by (k8s_pod_name) (rate(jvm_cpu_time_seconds_total{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])) / clamp_min(sum by (k8s_pod_name) (jvm_cpu_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}), 1)",
+          "range": true,
+          "instant": false,
+          "legendFormat": "from cpu.time {{k8s_pod_name}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 802,
+      "title": "JVM heap — used / committed / max",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 3,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (k8s_pod_name) (jvm_memory_used_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"heap\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "used {{k8s_pod_name}}"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (k8s_pod_name) (jvm_memory_committed_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"heap\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "committed {{k8s_pod_name}}"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "sum by (k8s_pod_name) (jvm_memory_limit_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"heap\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "max {{k8s_pod_name}}"
+        },
+        {
+          "refId": "D",
+          "editorMode": "code",
+          "expr": "sum by (k8s_pod_name) (jvm_memory_used_after_last_gc_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"heap\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "live set after GC {{k8s_pod_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "max.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How much of the app's memory (heap) is actually in use right now, versus its ceiling."
+    },
+    {
+      "id": 803,
+      "title": "JVM heap utilisation (% of max)",
+      "description": "Simple: Memory usage as a percentage of the app's max allowed heap — climbing toward 100% is a warning sign.\n\nPercent of jvm_memory_limit_bytes (true -Xmx), not of committed. v9 divided by committed, which understates pressure because committed grows with usage.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 16,
+        "y": 3,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "100 * sum by (k8s_pod_name) (jvm_memory_used_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"heap\"}) / clamp_min(sum by (k8s_pod_name) (jvm_memory_limit_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"heap\"}), 1)",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{k8s_pod_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            },
+            "spanNulls": true,
+            "insertNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 804,
+      "title": "JVM non-heap + memory by pool",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (jvm_memory_pool_name) (jvm_memory_used_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{jvm_memory_pool_name}}"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum (jvm_memory_used_bytes{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",jvm_memory_type=\"non_heap\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "TOTAL non-heap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Memory the app uses outside the regular heap (like loaded class metadata), broken down by type."
+    },
+    {
+      "id": 805,
+      "title": "GC — time per second & pause P99",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 10,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (jvm_gc_name) (rate(jvm_gc_duration_seconds_sum{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "GC s/s {{jvm_gc_name}}",
+          "interval": "2m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, jvm_gc_name) (rate(jvm_gc_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "pause P99 {{jvm_gc_name}}",
+          "interval": "10m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 4,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How much time the app spends pausing to clean up unused memory (garbage collection), and how long the worst pauses are."
+    },
+    {
+      "id": 806,
+      "title": "GC — collections per second",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 16,
+        "y": 10,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (jvm_gc_name, jvm_gc_action) (rate(jvm_gc_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{jvm_gc_name}} / {{jvm_gc_action}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "decimals": 3,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How often garbage collection is running — frequent runs can mean memory pressure."
+    },
+    {
+      "id": 807,
+      "title": "JVM threads — live / by state / peak",
+      "description": "Simple: How many worker threads the app has running, and whether they're busy, waiting, or idle.\n\nOTel's JVM instrumentation does not emit a peak-threads gauge (that is a Micrometer metric). 'peak (observed)' below is max_over_time() across the selected range, which is the honest equivalent from OTel data.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum (jvm_thread_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "live threads"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (jvm_thread_state) (jvm_thread_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{jvm_thread_state}}"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "max_over_time(sum(jvm_thread_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})[$__range:1m])",
+          "range": true,
+          "instant": false,
+          "legendFormat": "peak (observed)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "peak (observed)"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "live threads"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 808,
+      "title": "JVM threads — daemon vs application",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 17,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (jvm_thread_daemon) (jvm_thread_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "daemon={{jvm_thread_daemon}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Background (daemon) threads versus the app's own request-handling threads."
+    },
+    {
+      "id": 809,
+      "title": "Classes loaded / unloaded",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 16,
+        "y": 17,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum (jvm_class_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})",
+          "range": true,
+          "instant": false,
+          "legendFormat": "classes loaded"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum (rate(jvm_class_loaded_total{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "classes loaded/s",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How many Java classes are currently loaded into memory — a steadily climbing number can indicate a class-loading leak."
+    }
+  ]
+}

@@ -1,0 +1,927 @@
+{
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "name": "Container restarts",
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "expr": "changes(kube_pod_container_status_restarts_total{namespace=~\"$service_namespace\",pod=~\"$pod_name\"}[$__interval]) > 0",
+        "titleFormat": "Container restart",
+        "textFormat": "{{pod}} / {{container}}",
+        "step": "60s"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "sre",
+    "apm",
+    "devopslabs",
+    "tracing",
+    "quick-view"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "DevopsLabs — Request Investigation (Traces & Logs)",
+  "uid": "exora-g360-apm-request-investigation",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "prometheus_datasource",
+        "label": "Metrics DS",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "current": {
+          "text": "Prometheus",
+          "value": "prometheus"
+        }
+      },
+      {
+        "name": "tempo_datasource",
+        "label": "Traces DS",
+        "type": "datasource",
+        "query": "tempo",
+        "hide": 0,
+        "current": {
+          "text": "Tempo",
+          "value": "tempo"
+        }
+      },
+      {
+        "name": "loki_datasource",
+        "label": "Logs DS",
+        "type": "datasource",
+        "query": "loki",
+        "hide": 0,
+        "current": {
+          "text": "Loki",
+          "value": "loki"
+        }
+      },
+      {
+        "name": "deployment_environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "query": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "description": "Sourced from the metric, not target_info. The OTel Java agent here emits the pre-semconv-1.27 attribute deployment.environment -> label deployment_environment. target_info additionally exposes deployment_environment_name, which does NOT exist on the metric series - reading the variable from target_info produced a value that matched nothing.",
+        "hide": 2
+      },
+      {
+        "name": "service_namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "dev-greenfield",
+          "value": "dev-greenfield"
+        }
+      },
+      {
+        "name": "service_name",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "description": "Sourced from the application metric, NOT from target_info. Prometheus' OTLP receiver turns service.name into the `job` label and strips it from target_info (keep_identifying_resource_attributes only exists in Prometheus 3.2+), so label_values(target_info, service_name) returns nothing on 2.55. promote_resource_attributes does put service_name on the metrics themselves, which is what this queries.",
+        "definition": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "query": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "Exora-G360_Dev_API_Gateway",
+          "value": "Exora-G360_Dev_API_Gateway"
+        }
+      },
+      {
+        "name": "http_operation",
+        "label": "API Route",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "http_method",
+        "label": "Method",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "k8s_workload",
+        "label": "Deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "api-gateway-backend-dev",
+          "value": "api-gateway-backend-dev"
+        }
+      },
+      {
+        "name": "pod_name",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": "$k8s_workload-.*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "log_level",
+        "label": "Log level",
+        "type": "custom",
+        "hide": 0,
+        "description": "Loki 3.x derives detected_level automatically. Set to '.+' to see every line regardless of level.",
+        "query": "error and warn : error|warn,errors only : error,all levels : .+",
+        "options": [
+          {
+            "selected": true,
+            "text": "error and warn",
+            "value": "error|warn"
+          },
+          {
+            "selected": false,
+            "text": "errors only",
+            "value": "error"
+          },
+          {
+            "selected": false,
+            "text": "all levels",
+            "value": ".+"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "error and warn",
+          "value": "error|warn"
+        }
+      },
+      {
+        "name": "traceID",
+        "label": "Selected Trace ID",
+        "type": "textbox",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Populated automatically when you click a row in the API REQUESTS table. You can also paste a trace ID here."
+      },
+      {
+        "name": "min_duration",
+        "label": "Trace min duration",
+        "type": "custom",
+        "hide": 0,
+        "query": "0ms,10ms,50ms,100ms,250ms,500ms,1s,2s,5s",
+        "options": [
+          {
+            "selected": true,
+            "text": "0ms",
+            "value": "0ms"
+          },
+          {
+            "selected": false,
+            "text": "10ms",
+            "value": "10ms"
+          },
+          {
+            "selected": false,
+            "text": "50ms",
+            "value": "50ms"
+          },
+          {
+            "selected": false,
+            "text": "100ms",
+            "value": "100ms"
+          },
+          {
+            "selected": false,
+            "text": "250ms",
+            "value": "250ms"
+          },
+          {
+            "selected": false,
+            "text": "500ms",
+            "value": "500ms"
+          },
+          {
+            "selected": false,
+            "text": "1s",
+            "value": "1s"
+          },
+          {
+            "selected": false,
+            "text": "2s",
+            "value": "2s"
+          },
+          {
+            "selected": false,
+            "text": "5s",
+            "value": "5s"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "0ms",
+          "value": "0ms"
+        }
+      },
+      {
+        "name": "status_min",
+        "label": "Trace min HTTP status",
+        "type": "custom",
+        "hide": 0,
+        "query": "All : 0,4xx and 5xx only : 400,5xx only : 500",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "0"
+          },
+          {
+            "selected": false,
+            "text": "4xx and 5xx only",
+            "value": "400"
+          },
+          {
+            "selected": false,
+            "text": "5xx only",
+            "value": "500"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "0"
+        },
+        "description": "TraceQL numeric floor on span.http.response.status_code. Display text vs substituted value: 'All' -> 0."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "DevopsLabs — Request Investigation (Traces & Logs)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Self-contained single-window trace investigation: click a row in API REQUESTS (or FAILED REQUESTS / SLOWEST JDBC / SQL SPANS) to load its waterfall and logs below, in this same dashboard. Same mechanism as the full v10 dashboard, scoped to just this workflow."
+      }
+    },
+    {
+      "id": 401,
+      "title": "API REQUESTS — click any row to load its waterfall below",
+      "description": "Simple: A list of real individual requests — click one to load its full step-by-step trace below.\n\nTEMPO / TraceQL, tableType = spans. kind=server keeps background jobs (OutboxRelay.relay) out of the list; select() supplies the method / route / status / pod columns.\n\nCLICK THE 'Trace ID' COLUMN — that cell carries the drilldown link. It rewrites the dashboard URL with var-traceID, which the waterfall panel and the Loki panel below both read. Clicking any other column does nothing.\n\nGrafana cannot expand a waterfall inside a table panel; a table row -> data link -> dashboard variable -> traces panel round-trip is the supported pattern. It stays in this browser tab, so it still reads as one window.",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo_datasource}"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"$service_name\" && kind = server && span.http.route =~ \"$http_operation\" && span.http.request.method =~ \"$http_method\" && span.http.response.status_code >= $status_min && duration >= $min_duration } | select(span.http.request.method, span.http.route, span.http.response.status_code, resource.k8s.pod.name, resource.service.version)",
+          "limit": 100,
+          "spss": 1,
+          "tableType": "spans",
+          "filters": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          },
+          "links": [
+            {
+              "title": "▶ Load this request's waterfall (below)",
+              "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-deployment_environment=${deployment_environment}&var-service_namespace=${service_namespace}&var-service_name=${service_name}&var-http_operation=${http_operation}&var-http_method=${http_method}&var-traceID=${__data.fields.traceIdHidden}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceIdHidden"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": false
+              },
+              {
+                "id": "displayName",
+                "value": "Trace ID"
+              },
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "▶ Load this request's waterfall below",
+                    "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-deployment_environment=${deployment_environment}&var-service_namespace=${service_namespace}&var-service_name=${service_name}&var-http_operation=${http_operation}&var-http_method=${http_method}&var-log_level=${log_level}&var-traceID=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ns"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 500000000
+                    },
+                    {
+                      "color": "red",
+                      "value": 2000000000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*status_code.*"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 400
+                    },
+                    {
+                      "color": "red",
+                      "value": 500
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*http.route.*"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 340
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "duration",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 402,
+      "title": "SELECTED TRACE — FULL WATERFALL:  HTTP → Controller → Service → Repository → JDBC → SQL → DB → Downstream",
+      "description": "Simple: The exact path one specific request took through the app, step by step, showing where the time was actually spent.\n\nTEMPO / TraceQL trace-by-ID lookup on ${traceID}.\n\n'No data found in response' here means the Selected Trace ID variable is still empty — click the Trace ID column in the API REQUESTS table above, or paste an ID into the box at the top of the dashboard.\n\nExpand spans to read attributes: db.statement, db.system, Hikari pool timings, downstream http.url, exception events, and the gaps between siblings. Note that gateway proxy routes often produce a single-span trace; the deep JDBC/SQL chains show up on routes the gateway serves itself, such as /api/v1/permissions/me.",
+      "type": "traces",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 18
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo_datasource}"
+          },
+          "queryType": "traceql",
+          "query": "$traceID",
+          "limit": 1000,
+          "filters": []
+        }
+      ],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 403,
+      "title": "LOGS FOR THE SELECTED TRACE",
+      "description": "Simple: Every log message the app printed while handling that one specific request.\n\nLOKI / LogQL. Loki's OTLP endpoint promotes service.name and the k8s.* resource attributes to labels; the log record's trace_id lands in structured metadata, which is what the `| trace_id=` filter matches. Requires -Dotel.logs.exporter=otlp on the app (you have it) — note the Instrumentation CR sets OTEL_LOGS_EXPORTER=none, and the -D system property is what overrides it.",
+      "type": "logs",
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki_datasource}"
+          },
+          "editorMode": "code",
+          "expr": "{service_name=\"$service_name\", k8s_namespace_name=\"$service_namespace\"} | trace_id=`$traceID`",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Ascending"
+      }
+    },
+    {
+      "id": 404,
+      "title": "FAILED REQUESTS — traces with errors or 5xx",
+      "description": "Simple: Only the requests that failed or returned a server error, ready to click into.\n\nTEMPO / TraceQL. Root-cause list for the ERROR INVESTIGATION workflow. Click through to the waterfall the same way.",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo_datasource}"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"$service_name\" && kind = server && (status = error || span.http.response.status_code >= 500) } | select(span.http.request.method, span.http.route, span.http.response.status_code, resource.k8s.pod.name)",
+          "limit": 50,
+          "spss": 1,
+          "tableType": "spans",
+          "filters": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "links": [
+            {
+              "title": "▶ Load this failed request's waterfall",
+              "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-traceID=${__data.fields.traceIdHidden}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceIdHidden"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": false
+              },
+              {
+                "id": "displayName",
+                "value": "Trace ID"
+              },
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "▶ Load this failed request's waterfall",
+                    "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-deployment_environment=${deployment_environment}&var-service_namespace=${service_namespace}&var-service_name=${service_name}&var-http_operation=${http_operation}&var-http_method=${http_method}&var-log_level=${log_level}&var-traceID=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ns"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      }
+    },
+    {
+      "id": 405,
+      "title": "SLOWEST JDBC / SQL SPANS",
+      "description": "Simple: The slowest database queries across recent requests, with the actual SQL involved.\n\nTEMPO / TraceQL. Prometheus only exposes HikariCP pool metrics (create / wait / use time) — it has no per-statement SQL latency. This panel is the per-statement view: it selects db spans directly out of Tempo, so you can see which SELECT is slow and jump to the whole request that issued it.",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo_datasource}"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"$service_name\" && span.db.system != nil && duration >= $min_duration } | select(span.db.system, span.db.name, span.db.operation, span.db.sql.table, span.db.statement)",
+          "limit": 50,
+          "spss": 2,
+          "tableType": "spans",
+          "filters": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "links": [
+            {
+              "title": "▶ Load the full request that ran this SQL",
+              "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-traceID=${__data.fields.traceIdHidden}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceIdHidden"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": false
+              },
+              {
+                "id": "displayName",
+                "value": "Trace ID"
+              },
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "▶ Load the full request that ran this SQL",
+                    "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-deployment_environment=${deployment_environment}&var-service_namespace=${service_namespace}&var-service_name=${service_name}&var-http_operation=${http_operation}&var-http_method=${http_method}&var-log_level=${log_level}&var-traceID=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ns"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "duration",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 406,
+      "title": "Trace list (fallback — guaranteed-clickable trace IDs)",
+      "description": "Simple: A simpler backup list of recent requests, in case the main table above has trouble loading.\n\nSame TraceQL filter as the panel above but rendered with tableType = traces, whose trace-id column is always named `traceID`. Keep whichever of the two tables clicks through correctly in your Grafana build and delete the other.",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo_datasource}"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"$service_name\" && kind = server && span.http.route =~ \"$http_operation\" && span.http.request.method =~ \"$http_method\" && duration >= $min_duration }",
+          "limit": 50,
+          "tableType": "traces",
+          "filters": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "▶ Load this request's waterfall",
+                    "url": "/d/exora-g360-apm-request-investigation/?${__url_time_range}&var-deployment_environment=${deployment_environment}&var-service_namespace=${service_namespace}&var-service_name=${service_name}&var-http_operation=${http_operation}&var-http_method=${http_method}&var-traceID=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      }
+    }
+  ]
+}

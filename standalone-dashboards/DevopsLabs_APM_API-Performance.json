@@ -1,0 +1,2772 @@
+{
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "name": "Container restarts",
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "expr": "changes(kube_pod_container_status_restarts_total{namespace=~\"$service_namespace\",pod=~\"$pod_name\"}[$__interval]) > 0",
+        "titleFormat": "Container restart",
+        "textFormat": "{{pod}} / {{container}}",
+        "step": "60s"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "sre",
+    "apm",
+    "devopslabs",
+    "api",
+    "quick-view"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "DevopsLabs — API Performance (Golden Signals & Endpoints)",
+  "uid": "exora-g360-apm-api-performance",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "prometheus_datasource",
+        "label": "Metrics DS",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "current": {
+          "text": "Prometheus",
+          "value": "prometheus"
+        }
+      },
+      {
+        "name": "tempo_datasource",
+        "label": "Traces DS",
+        "type": "datasource",
+        "query": "tempo",
+        "hide": 0,
+        "current": {
+          "text": "Tempo",
+          "value": "tempo"
+        }
+      },
+      {
+        "name": "loki_datasource",
+        "label": "Logs DS",
+        "type": "datasource",
+        "query": "loki",
+        "hide": 0,
+        "current": {
+          "text": "Loki",
+          "value": "loki"
+        }
+      },
+      {
+        "name": "deployment_environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "query": "label_values(http_server_request_duration_seconds_count,deployment_environment)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "description": "Sourced from the metric, not target_info. The OTel Java agent here emits the pre-semconv-1.27 attribute deployment.environment -> label deployment_environment. target_info additionally exposes deployment_environment_name, which does NOT exist on the metric series - reading the variable from target_info produced a value that matched nothing.",
+        "hide": 2
+      },
+      {
+        "name": "service_namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{deployment_environment=~\"$deployment_environment\"},k8s_namespace_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "dev-greenfield",
+          "value": "dev-greenfield"
+        }
+      },
+      {
+        "name": "service_name",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "description": "Sourced from the application metric, NOT from target_info. Prometheus' OTLP receiver turns service.name into the `job` label and strips it from target_info (keep_identifying_resource_attributes only exists in Prometheus 3.2+), so label_values(target_info, service_name) returns nothing on 2.55. promote_resource_attributes does put service_name on the metrics themselves, which is what this queries.",
+        "definition": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "query": "label_values(http_server_request_duration_seconds_count,service_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "Exora-G360_Dev_API_Gateway",
+          "value": "Exora-G360_Dev_API_Gateway"
+        }
+      },
+      {
+        "name": "http_operation",
+        "label": "API Route",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_route)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "http_method",
+        "label": "Method",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},http_request_method)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "k8s_workload",
+        "label": "Deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "query": "label_values(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"},k8s_deployment_name)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "current": {
+          "text": "api-gateway-backend-dev",
+          "value": "api-gateway-backend-dev"
+        }
+      },
+      {
+        "name": "pod_name",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$k8s_workload-.*\"},pod)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": "$k8s_workload-.*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "query": "label_values(kube_pod_info{namespace=~\"$service_namespace\",pod=~\"$pod_name\"},node)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "log_level",
+        "label": "Log level",
+        "type": "custom",
+        "hide": 0,
+        "description": "Loki 3.x derives detected_level automatically. Set to '.+' to see every line regardless of level.",
+        "query": "error and warn : error|warn,errors only : error,all levels : .+",
+        "options": [
+          {
+            "selected": true,
+            "text": "error and warn",
+            "value": "error|warn"
+          },
+          {
+            "selected": false,
+            "text": "errors only",
+            "value": "error"
+          },
+          {
+            "selected": false,
+            "text": "all levels",
+            "value": ".+"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "error and warn",
+          "value": "error|warn"
+        }
+      },
+      {
+        "name": "traceID",
+        "label": "Selected Trace ID",
+        "type": "textbox",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Populated automatically when you click a row in the API REQUESTS table. You can also paste a trace ID here."
+      },
+      {
+        "name": "min_duration",
+        "label": "Trace min duration",
+        "type": "custom",
+        "hide": 0,
+        "query": "0ms,10ms,50ms,100ms,250ms,500ms,1s,2s,5s",
+        "options": [
+          {
+            "selected": true,
+            "text": "0ms",
+            "value": "0ms"
+          },
+          {
+            "selected": false,
+            "text": "10ms",
+            "value": "10ms"
+          },
+          {
+            "selected": false,
+            "text": "50ms",
+            "value": "50ms"
+          },
+          {
+            "selected": false,
+            "text": "100ms",
+            "value": "100ms"
+          },
+          {
+            "selected": false,
+            "text": "250ms",
+            "value": "250ms"
+          },
+          {
+            "selected": false,
+            "text": "500ms",
+            "value": "500ms"
+          },
+          {
+            "selected": false,
+            "text": "1s",
+            "value": "1s"
+          },
+          {
+            "selected": false,
+            "text": "2s",
+            "value": "2s"
+          },
+          {
+            "selected": false,
+            "text": "5s",
+            "value": "5s"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "0ms",
+          "value": "0ms"
+        }
+      },
+      {
+        "name": "status_min",
+        "label": "Trace min HTTP status",
+        "type": "custom",
+        "hide": 0,
+        "query": "All : 0,4xx and 5xx only : 400,5xx only : 500",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "0"
+          },
+          {
+            "selected": false,
+            "text": "4xx and 5xx only",
+            "value": "400"
+          },
+          {
+            "selected": false,
+            "text": "5xx only",
+            "value": "500"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "0"
+        },
+        "description": "TraceQL numeric floor on span.http.response.status_code. Display text vs substituted value: 'All' -> 0."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "DevopsLabs — API Performance (Golden Signals & Endpoints)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Quick view of API health — request rate, error rate, latency, and per-endpoint breakdown. For root-cause drilldown into a specific slow/failed request (trace waterfall + logs), see **DevopsLabs — SRE / APM Request Journey (v10)**, or use the linked Request Investigation dashboard."
+      }
+    },
+    {
+      "id": 2,
+      "title": "Metrics freshness",
+      "description": "Simple: How old the newest metric data is — should normally stay under a minute or two.\n\nSeconds since Prometheus last received an application metric sample over OTLP. Green = pipeline healthy. Red / No data = the collector is no longer delivering metrics to Prometheus, which makes every PromQL panel on this dashboard look empty or stale. Check the TELEMETRY PIPELINE HEALTH row at the bottom.",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "time() - max(max_over_time(timestamp(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"})[$__range:1m]))",
+          "range": false,
+          "instant": true,
+          "legendFormat": "age"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "NO METRICS",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 180
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 61,
+      "type": "text",
+      "title": "What this row is",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 5
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Your collector runs a **spanmetrics connector** (`05-otel-collector.yaml`) with `http.request.method`, `http.response.status_code` and `http.route` as dimensions. It derives RED metrics from the trace stream, so it keeps working even when the application's own OTLP metrics are being rejected — and your Pipeline Health row shows spans flowing at ~40/s with **zero** failures.\n\nThrough the Prometheus OTLP receiver these arrive as `traces_span_metrics_calls_total` and `traces_span_metrics_duration_milliseconds_{bucket,sum,count}` — confirmed present in your Prometheus on 2026-08-11. Note `traces_spanmetrics_calls_total` (no underscore between span and metrics) also exists: that one is Tempo's metrics-generator, which has no `http_route` dimension and cannot back an endpoint table.\n\nStated plainly: these are **trace-derived and sampling-dependent**, not the authoritative server histogram. Latency here is in **milliseconds**, and the resolution is the 11 explicit buckets from the collector config, so percentiles are coarser than the app's own histogram. This is a working substitute, not a replacement."
+      }
+    },
+    {
+      "id": 62,
+      "type": "timeseries",
+      "title": "Request rate by endpoint (spanmetrics)",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{http_request_method}} {{http_route}}",
+          "expr": "topk(8, sum by (http_request_method, http_route) (rate(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__rate_interval])))",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: How many requests per second each endpoint gets, rebuilt from trace data as a backup source."
+    },
+    {
+      "id": 63,
+      "type": "timeseries",
+      "title": "P95 latency by endpoint (spanmetrics)",
+      "gridPos": {
+        "x": 8,
+        "y": 25,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{http_route}}",
+          "expr": "topk(8, histogram_quantile(0.95, sum by (le, http_route) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__rate_interval]))))",
+          "interval": "10m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: The slow end of response times per endpoint (95th percentile), rebuilt from trace data as a backup source."
+    },
+    {
+      "id": 64,
+      "type": "timeseries",
+      "title": "Errors by endpoint (spanmetrics)",
+      "gridPos": {
+        "x": 16,
+        "y": 25,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "legendFormat": "5xx {{http_route}}",
+          "expr": "topk(10, sum by (http_route) (rate(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\",http_response_status_code=~\"5..\"}[$__rate_interval])))",
+          "interval": "2m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "legendFormat": "span error {{http_route}}",
+          "expr": "topk(10, sum by (http_route) (rate(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])))",
+          "interval": "2m"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "2m",
+          "legendFormat": "TOTAL 5xx (0 = no errors)",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\",http_response_status_code=~\"5..\"}[$__rate_interval])) or vector(0)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Error rate per endpoint, rebuilt from trace data as a backup source.\n\nPer-route series only appear once a route has actually errored. The TOTAL line is pinned with `or vector(0)` so a healthy service shows a flat zero instead of an empty panel."
+    },
+    {
+      "id": 65,
+      "type": "table",
+      "title": "API Endpoint Performance (spanmetrics)",
+      "description": "Simple: Same request/latency/error breakdown as the main endpoint table, but sourced from traces instead of the app's own metrics.\n\nSame shape as the Prometheus endpoint table, rebuilt from calls_total / duration_milliseconds_*. Latency columns are milliseconds. Clicking a row sets the same API Route + Method variables, so the Tempo trace drilldown below still works unchanged.",
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 11
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "sum by (endpoint, http_request_method, http_route) (label_join(increase(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "sum by (endpoint) (label_join(rate(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "histogram_quantile(0.50, sum by (le, endpoint) (label_join(rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")))"
+        },
+        {
+          "refId": "D",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "histogram_quantile(0.95, sum by (le, endpoint) (label_join(rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")))"
+        },
+        {
+          "refId": "E",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "histogram_quantile(0.99, sum by (le, endpoint) (label_join(rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")))"
+        },
+        {
+          "refId": "F",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "sum by (endpoint) (label_join(increase(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\",http_response_status_code=~\"4..\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))"
+        },
+        {
+          "refId": "G",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "sum by (endpoint) (label_join(increase(traces_span_metrics_calls_total{service_name=~\"$service_name\",span_kind=\"SPAN_KIND_SERVER\",http_response_status_code=~\"5..\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "endpoint",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "endpoint": true
+            },
+            "indexByName": {
+              "http_request_method": 0,
+              "http_route": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6,
+              "Value #F": 7,
+              "Value #G": 8
+            },
+            "renameByName": {
+              "http_request_method": "Method",
+              "http_route": "Endpoint",
+              "Value #A": "Requests",
+              "Value #B": "RPS",
+              "Value #C": "P50",
+              "Value #D": "P95",
+              "Value #E": "P99",
+              "Value #F": "4xx",
+              "Value #G": "5xx"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "links": [
+            {
+              "title": "Drill into this endpoint (sets API Route + Method)",
+              "targetBlank": false,
+              "url": "/d/exora-g360-sre-v10/?${__url_time_range}&var-service_name=${service_name}&var-http_operation=${__data.fields.Endpoint:percentencode}&var-http_method=${__data.fields.Method:percentencode}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Requests"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RPS"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P50"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P99"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 5000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Endpoint"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 51,
+      "type": "table",
+      "title": "Which metric families actually exist in Prometheus (no filters at all)",
+      "description": "Simple: Lists every metric Prometheus currently has, ignoring all dashboard filters — confirms data is arriving at all.\n\nDeliberately unfiltered and unscoped, so no dashboard variable can make it lie. If http_server_request_duration_seconds_count is MISSING here, the application's own OTLP metrics are not reaching Prometheus and no dashboard change can help — fix the pipeline. If calls_total / duration_milliseconds_* ARE here, open the SPANMETRICS FALLBACK row below: it rebuilds the golden signals and the endpoint table from the trace stream instead.",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "count by (__name__) ({__name__=~\"http_server_request_duration_seconds_count|http_client_request_duration_seconds_count|jvm_memory_used_bytes|jvm_cpu_recent_utilization_ratio|jvm_thread_count|jvm_gc_duration_seconds_count|db_client_connections_usage|db_client_connections_use_time_milliseconds_count|traces_span_metrics_calls_total|traces_span_metrics_duration_milliseconds_count|traces_span_metrics_duration_milliseconds_bucket|traces_spanmetrics_calls_total|traces_service_graph_request_total|target_info\"})"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "__name__": "Metric",
+              "Value": "Series count"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Metric"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 430
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Metric",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 52,
+      "type": "table",
+      "title": "How stale is each family (seconds since its newest sample)",
+      "description": "Simple: How many seconds since each metric type last got new data — green means it's current.\n\nGreen means Prometheus is currently being fed that family. Red or absent means the series exists in TSDB but nothing new is arriving — which is exactly what makes instant queries return 'No data' while range queries still show history.",
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "expr": "time() - max by (__name__) (max_over_time(timestamp({__name__=~\"http_server_request_duration_seconds_count|http_client_request_duration_seconds_count|jvm_memory_used_bytes|db_client_connections_usage|calls_total|duration_milliseconds_count|traces_spanmetrics_calls_total|traces_service_graph_request_total|target_info\"})[$__range:5m]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "__name__": "Metric",
+              "Value": "Sample age"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Metric"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 430
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sample age"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 180
+                    },
+                    {
+                      "color": "red",
+                      "value": 600
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      }
+    },
+    {
+      "id": 101,
+      "title": "Requests (selected range)",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]))",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "description": "Simple: Total number of requests in the selected time window."
+    },
+    {
+      "id": 102,
+      "title": "Request rate",
+      "type": "stat",
+      "gridPos": {
+        "x": 3,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Simple: How many requests per second the service is handling right now."
+    },
+    {
+      "id": 103,
+      "title": "Success rate (non-5xx)",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "100 * (1 - (sum(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"5..\"}[$__range])) or vector(0)) / sum(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range])))",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "min": 90,
+          "max": 100,
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 99
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "description": "Simple: Percent of requests that did NOT return a server error."
+    },
+    {
+      "id": 104,
+      "title": "4xx rate",
+      "type": "stat",
+      "gridPos": {
+        "x": 9,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "100 * (sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"4..\"}[$__rate_interval])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "orange",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Simple: Percent of requests rejected as bad or unauthorized client requests."
+    },
+    {
+      "id": 105,
+      "title": "5xx rate",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "100 * (sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"5..\"}[$__rate_interval])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Simple: Percent of requests that failed due to a server-side error."
+    },
+    {
+      "id": 106,
+      "title": "Average latency",
+      "description": "Simple: The average time it takes to respond to a request.\n\nsum(rate(_sum)) / sum(rate(_count)). NOTE: v9 wrapped the denominator in clamp_min(...,1), which silently divided by 1 whenever RPS < 1 and reported a near-zero average. That clamp is removed here.",
+      "type": "stat",
+      "gridPos": {
+        "x": 15,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_request_duration_seconds_sum{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 107,
+      "title": "P95 latency",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "exemplar": true,
+          "interval": "10m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Simple: 95% of requests were faster than this — shows how slow it gets for the slower few."
+    },
+    {
+      "id": 108,
+      "title": "P99 latency",
+      "type": "stat",
+      "gridPos": {
+        "x": 21,
+        "y": 21,
+        "w": 3,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "exemplar": true,
+          "interval": "10m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Simple: 99% of requests were faster than this — the worst-case tail, excluding the rarest outliers."
+    },
+    {
+      "id": 109,
+      "title": "Traffic by HTTP status class",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{http_response_status_code}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 0,
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "5.."
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "4.."
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "2.."
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Request volume over time, broken down by response status code."
+    },
+    {
+      "id": 110,
+      "title": "Latency percentiles (service)",
+      "description": "Simple: How response time (P50/P95/P99) has changed over time for the whole service.\n\nClick a purple exemplar diamond to jump straight to the trace that produced that data point.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P50",
+          "exemplar": true,
+          "interval": "10m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P90",
+          "interval": "10m"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P95",
+          "interval": "10m"
+        },
+        {
+          "refId": "D",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P99",
+          "interval": "10m"
+        },
+        {
+          "refId": "E",
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_request_duration_seconds_sum{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval])) / sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "Avg",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 201,
+      "title": "API Endpoint Performance",
+      "description": "Simple: Every endpoint's request count, speed, and error rate side by side — click a row to drill into just that endpoint.\n\nPROMETHEUS / PromQL. One row per METHOD + ROUTE. All targets are instant queries using increase()/rate() so they follow the time picker. v9 used hardcoded [1h] windows and clamp_min(...,1) denominators; both are fixed here. Click any row: 'Drill into this endpoint' sets the API Route + Method dashboard variables, which drives the SELECTED ENDPOINT row and the Tempo trace list below.",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (endpoint, http_request_method, http_route) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "sum by (endpoint) (label_join(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "sum by (endpoint) (label_join(rate(http_server_request_duration_seconds_sum{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")) / sum by (endpoint) (label_join(rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le, endpoint) (label_join(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, endpoint) (label_join(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "F",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, endpoint) (label_join(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "G",
+          "editorMode": "code",
+          "expr": "sum by (endpoint) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"2..\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "H",
+          "editorMode": "code",
+          "expr": "sum by (endpoint) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"4..\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "I",
+          "editorMode": "code",
+          "expr": "sum by (endpoint) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"5..\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "J",
+          "editorMode": "code",
+          "expr": "100 * (sum by (endpoint) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"5..\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")) or sum by (endpoint) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\")) * 0) / sum by (endpoint) (label_join(increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]), \"endpoint\", \" \", \"http_request_method\", \"http_route\"))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "endpoint",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "endpoint": true
+            },
+            "indexByName": {
+              "http_request_method": 0,
+              "http_route": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6,
+              "Value #F": 7,
+              "Value #G": 8,
+              "Value #H": 9,
+              "Value #I": 10,
+              "Value #J": 11
+            },
+            "renameByName": {
+              "http_request_method": "Method",
+              "http_route": "Endpoint",
+              "Value #A": "Requests",
+              "Value #B": "RPS",
+              "Value #C": "Avg",
+              "Value #D": "P50",
+              "Value #E": "P95",
+              "Value #F": "P99",
+              "Value #G": "2xx",
+              "Value #H": "4xx",
+              "Value #I": "5xx",
+              "Value #J": "Error %"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "links": [
+            {
+              "title": "Drill into this endpoint (sets API Route + Method)",
+              "url": "/d/exora-g360-sre-v10/?${__url_time_range}&var-deployment_environment=${deployment_environment}&var-service_namespace=${service_namespace}&var-service_name=${service_name}&var-http_operation=${__data.fields.Endpoint:percentencode}&var-http_method=${__data.fields.Method:percentencode}",
+              "targetBlank": false
+            },
+            {
+              "title": "Open this endpoint's traces in Explore (Tempo)",
+              "url": "/explore?orgId=1&left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22traceql%22,%22query%22:%22%7B%20resource.service.name%3D%5C%22${service_name}%5C%22%20%26%26%20span.http.route%3D%5C%22${__data.fields.Endpoint}%5C%22%20%7D%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Requests"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RPS"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P50"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P99"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 5
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2xx"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Error %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "red",
+                      "value": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Endpoint"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 301,
+      "title": "Selected endpoint — request rate by status",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_request_method=~\"$http_method\",http_route=~\"$http_operation\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "{{http_response_status_code}}",
+          "interval": "2m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "5.."
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "4.."
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "2.."
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Request volume for the one endpoint you clicked, broken down by response status."
+    },
+    {
+      "id": 302,
+      "title": "Selected endpoint — latency percentiles",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 56,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_request_method=~\"$http_method\",http_route=~\"$http_operation\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P50",
+          "exemplar": true,
+          "interval": "10m"
+        },
+        {
+          "refId": "B",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_request_method=~\"$http_method\",http_route=~\"$http_operation\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P95",
+          "exemplar": true,
+          "interval": "10m"
+        },
+        {
+          "refId": "C",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_request_method=~\"$http_method\",http_route=~\"$http_operation\"}[$__rate_interval])))",
+          "range": true,
+          "instant": false,
+          "legendFormat": "P99",
+          "exemplar": true,
+          "interval": "10m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true,
+            "insertNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Simple: Response time trend (P50/P95/P99) for just the one endpoint you clicked."
+    },
+    {
+      "id": 303,
+      "title": "Selected endpoint — latency distribution (heatmap)",
+      "description": "Simple: A heat-map of how response times are distributed for this endpoint — shows whether slowness is a rare outlier or a persistent band.\n\nRenders the raw histogram buckets. Bi-modal bands here mean the endpoint has two distinct code paths (e.g. cache hit vs DB round-trip) — pick a slow request from the trace list below to see which.",
+      "type": "heatmap",
+      "gridPos": {
+        "x": 16,
+        "y": 56,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_request_method=~\"$http_method\",http_route=~\"$http_operation\"}[$__rate_interval]))",
+          "range": true,
+          "instant": false,
+          "format": "heatmap",
+          "legendFormat": "{{le}}",
+          "exemplar": true,
+          "interval": "2m"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Turbo",
+          "steps": 64,
+          "reverse": false,
+          "exponent": 0.5,
+          "fill": "dark-orange"
+        },
+        "yAxis": {
+          "unit": "s",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "legend": {
+          "show": true
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 501,
+      "title": "HTTP status distribution",
+      "type": "piechart",
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 6,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "sum by (http_response_status_code) (increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\"}[$__range]))",
+          "range": false,
+          "instant": true,
+          "legendFormat": "{{http_response_status_code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "pieType": "donut",
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "description": "Simple: What share of all requests fall into each response status code."
+    },
+    {
+      "id": 502,
+      "title": "Top failing endpoints (4xx / 5xx)",
+      "type": "table",
+      "gridPos": {
+        "x": 6,
+        "y": 64,
+        "w": 18,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "expr": "topk(15, sum by (http_request_method, http_route, http_response_status_code) (increase(http_server_request_duration_seconds_count{service_name=~\"$service_name\",deployment_environment=~\"$deployment_environment\",k8s_namespace_name=~\"$service_namespace\",http_response_status_code=~\"[45]..\"}[$__range])))",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "http_request_method": 0,
+              "http_route": 1,
+              "http_response_status_code": 2,
+              "Value": 3
+            },
+            "renameByName": {
+              "http_request_method": "Method",
+              "http_route": "Endpoint",
+              "http_response_status_code": "Status",
+              "Value": "Failures"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "links": [
+            {
+              "title": "Drill into this endpoint",
+              "url": "/d/exora-g360-sre-v10/?${__url_time_range}&var-http_operation=${__data.fields.Endpoint:percentencode}&var-http_method=${__data.fields.Method:percentencode}&var-status_min=400",
+              "targetBlank": false
+            },
+            {
+              "title": "Open this endpoint's traces in Explore (Tempo)",
+              "url": "/explore?orgId=1&left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22traceql%22,%22query%22:%22%7B%20resource.service.name%3D%5C%22${service_name}%5C%22%20%26%26%20span.http.route%3D%5C%22${__data.fields.Endpoint}%5C%22%20%7D%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failures"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Endpoint"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Failures",
+            "desc": true
+          }
+        ]
+      },
+      "description": "Simple: Which specific endpoints are producing the most errors right now."
+    },
+    {
+      "id": 503,
+      "title": "Application logs",
+      "description": "Simple: Raw log messages from the app, filtered to warnings and errors by default.\n\nLOKI / LogQL. Verified label set on your Loki: service_name, k8s_namespace_name, k8s_pod_name, k8s_deployment_name, k8s_container_name, deployment_environment, service_instance_id - plus detected_level, which Loki 3.x derives per line. Switch the 'Log level' variable to 'all levels' to see everything.",
+      "type": "logs",
+      "gridPos": {
+        "x": 0,
+        "y": 73,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki_datasource}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki_datasource}"
+          },
+          "editorMode": "code",
+          "expr": "{service_name=\"$service_name\", k8s_namespace_name=\"$service_namespace\"} | detected_level=~\"$log_level\"",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

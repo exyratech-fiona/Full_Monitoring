@@ -1,0 +1,728 @@
+# =====================================================================
+# Prometheus
+#
+# - Prometheus metrics
+# - OpenTelemetry OTLP metrics receiver
+# - Kubernetes metrics
+# - Node exporter
+# - kube-state-metrics
+# - PostgreSQL exporter
+# - Blackbox exporter
+# - Alertmanager
+# =====================================================================
+
+# =====================================================================
+# ServiceAccount
+# =====================================================================
+
+apiVersion: v1
+kind: ServiceAccount
+
+metadata:
+  name: prometheus
+  namespace: monitoring
+
+  labels:
+    app.kubernetes.io/name: prometheus
+
+---
+# =====================================================================
+# Prometheus ConfigMap
+# =====================================================================
+
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+
+  labels:
+    app.kubernetes.io/name: prometheus
+
+data:
+
+  prometheus.yml: |
+
+    # ================================================================
+    # Global configuration
+    # ================================================================
+
+    global:
+
+      scrape_interval: 15s
+
+      evaluation_interval: 15s
+
+      external_labels:
+
+        cluster: kubernetes
+
+        environment: dev
+
+
+    # ================================================================
+    # TSDB storage
+    #
+    # out_of_order_time_window is REQUIRED for OTLP push ingestion.
+    #
+    # The collector batches (batch.timeout 5s) and pushes over OTLP.
+    # Samples for the same series can therefore arrive slightly out
+    # of order. With the default window of 0, Prometheus rejects the
+    # ENTIRE request with HTTP 400 - there is no partial write - so
+    # a single late sample discards the whole batch.
+    # ================================================================
+
+    storage:
+
+      tsdb:
+
+        out_of_order_time_window: 30m
+
+
+    # ================================================================
+    # OpenTelemetry OTLP metrics
+    #
+    # OTel Collector sends metrics to:
+    #
+    # http://prometheus:9090/api/v1/otlp/v1/metrics
+    #
+    # ================================================================
+
+    otlp:
+
+      promote_resource_attributes:
+
+        # REQUIRED by the Grafana OTel dashboard
+
+        - service.instance.id
+        - service.name
+        - service.namespace
+        - deployment.environment.name
+
+        # Recommended OTel attributes
+
+        - service.version
+        - cloud.availability_zone
+        - cloud.region
+        - container.name
+        - deployment.environment
+        - k8s.cluster.name
+        - k8s.container.name
+        - k8s.cronjob.name
+        - k8s.daemonset.name
+        - k8s.deployment.name
+        - k8s.job.name
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.replicaset.name
+        - k8s.statefulset.name
+
+
+    # ================================================================
+    # Alertmanager
+    # ================================================================
+
+    alerting:
+
+      alertmanagers:
+
+        - static_configs:
+
+            - targets:
+
+                - 'alertmanager:9093'
+
+
+    # ================================================================
+    # Prometheus rules
+    # ================================================================
+
+    rule_files:
+
+      - /etc/prometheus/rules/*.yml
+
+
+    # ================================================================
+    # Scrape configuration
+    # ================================================================
+
+    scrape_configs:
+
+
+      # --------------------------------------------------------------
+      # Prometheus itself
+      # --------------------------------------------------------------
+
+      - job_name: prometheus
+
+        static_configs:
+
+          - targets:
+
+              - 'localhost:9090'
+
+
+      # --------------------------------------------------------------
+      # OpenTelemetry Collector INTERNAL metrics
+      #
+      # 8888 = Collector internal metrics
+      #
+      # IMPORTANT:
+      #
+      # Application OTel metrics are now sent to Prometheus using
+      # the OTLP endpoint.
+      #
+      # 8889 is therefore NOT scraped here.
+      # --------------------------------------------------------------
+
+      - job_name: otel-collector-internal
+
+        static_configs:
+
+          - targets:
+
+              - 'otel-collector:8888'
+
+
+      # --------------------------------------------------------------
+      # Node Exporter
+      # --------------------------------------------------------------
+
+      - job_name: node-exporter
+
+        kubernetes_sd_configs:
+
+          - role: endpoints
+
+            namespaces:
+
+              names:
+
+                - monitoring
+
+        relabel_configs:
+
+          - source_labels:
+
+              - __meta_kubernetes_service_label_app_kubernetes_io_name
+
+            regex: node-exporter
+
+            action: keep
+
+
+          - source_labels:
+
+              - __meta_kubernetes_endpoint_port_name
+
+            regex: metrics
+
+            action: keep
+
+
+          - source_labels:
+
+              - __meta_kubernetes_pod_node_name
+
+            target_label: node
+
+
+          - source_labels:
+
+              - __meta_kubernetes_pod_node_name
+
+            target_label: instance
+
+
+      # --------------------------------------------------------------
+      # kube-state-metrics
+      # --------------------------------------------------------------
+
+      - job_name: kube-state-metrics
+
+        static_configs:
+
+          - targets:
+
+              - 'kube-state-metrics:8080'
+
+
+      # --------------------------------------------------------------
+      # PostgreSQL Exporter
+      # --------------------------------------------------------------
+
+      - job_name: postgres-exporter
+
+        static_configs:
+
+          - targets:
+
+              - 'postgres-exporter:9187'
+
+
+      # --------------------------------------------------------------
+      # Blackbox HTTP
+      # --------------------------------------------------------------
+
+      - job_name: blackbox-http
+
+        metrics_path: /probe
+
+        params:
+
+          module:
+
+            - http_2xx
+
+        static_configs:
+
+          - targets:
+
+              - http://rego-app-server.default.svc.cluster.local:8080/actuator/health
+
+              - http://rego-app-server.default.svc.cluster.local:8080/actuator/prometheus
+
+        relabel_configs:
+
+          - source_labels:
+
+              - __address__
+
+            target_label: __param_target
+
+
+          - source_labels:
+
+              - __param_target
+
+            target_label: instance
+
+
+          - target_label: __address__
+
+            replacement: blackbox-exporter:9115
+
+
+      # --------------------------------------------------------------
+      # Blackbox Exporter
+      # --------------------------------------------------------------
+
+      - job_name: blackbox-exporter
+
+        static_configs:
+
+          - targets:
+
+              - 'blackbox-exporter:9115'
+
+
+      # --------------------------------------------------------------
+      # Kubernetes cAdvisor
+      # --------------------------------------------------------------
+
+      - job_name: kubernetes-cadvisor
+
+        scheme: https
+
+        tls_config:
+
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+          insecure_skip_verify: true
+
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+        kubernetes_sd_configs:
+
+          - role: node
+
+        relabel_configs:
+
+          - action: labelmap
+
+            regex: __meta_kubernetes_node_label_(.+)
+
+
+          - target_label: __address__
+
+            replacement: kubernetes.default.svc:443
+
+
+          - source_labels:
+
+              - __meta_kubernetes_node_name
+
+            regex: (.+)
+
+            target_label: __metrics_path__
+
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+
+      # --------------------------------------------------------------
+      # Kubernetes Kubelet
+      # --------------------------------------------------------------
+
+      - job_name: kubernetes-kubelet
+
+        scheme: https
+
+        tls_config:
+
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+          insecure_skip_verify: true
+
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+        kubernetes_sd_configs:
+
+          - role: node
+
+        relabel_configs:
+
+          - action: labelmap
+
+            regex: __meta_kubernetes_node_label_(.+)
+
+
+          - target_label: __address__
+
+            replacement: kubernetes.default.svc:443
+
+
+          - source_labels:
+
+              - __meta_kubernetes_node_name
+
+            regex: (.+)
+
+            target_label: __metrics_path__
+
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+
+
+      # --------------------------------------------------------------
+      # Kubernetes API Server
+      # --------------------------------------------------------------
+
+      - job_name: kubernetes-apiservers
+
+        scheme: https
+
+        tls_config:
+
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+          insecure_skip_verify: true
+
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+        kubernetes_sd_configs:
+
+          - role: endpoints
+
+        relabel_configs:
+
+          - source_labels:
+
+              - __meta_kubernetes_namespace
+              - __meta_kubernetes_service_name
+              - __meta_kubernetes_endpoint_port_name
+
+            action: keep
+
+            regex: default;kubernetes;https
+
+
+---
+# =====================================================================
+# Prometheus Deployment
+# =====================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: prometheus
+  namespace: monitoring
+
+  labels:
+    app.kubernetes.io/name: prometheus
+
+spec:
+
+  replicas: 1
+
+  strategy:
+
+    type: Recreate
+
+  selector:
+
+    matchLabels:
+
+      app.kubernetes.io/name: prometheus
+
+  template:
+
+    metadata:
+
+      labels:
+
+        app.kubernetes.io/name: prometheus
+
+    spec:
+
+      serviceAccountName: prometheus
+
+      # --------------------------------------------------------------
+      # Security
+      # --------------------------------------------------------------
+
+      securityContext:
+
+        runAsNonRoot: true
+
+        runAsUser: 65534
+
+        fsGroup: 65534
+
+
+      # --------------------------------------------------------------
+      # Fix ownership of Prometheus data directory
+      # --------------------------------------------------------------
+
+      initContainers:
+
+        - name: init-chown-data
+
+          image: busybox:1.36
+
+          command:
+
+            - sh
+            - -c
+            - chown -R 65534:65534 /prometheus
+
+          securityContext:
+
+            runAsNonRoot: false
+
+            runAsUser: 0
+
+          volumeMounts:
+
+            - name: data
+
+              mountPath: /prometheus
+
+
+      # --------------------------------------------------------------
+      # Prometheus container
+      # --------------------------------------------------------------
+
+      containers:
+
+        - name: prometheus
+
+          image: prom/prometheus:v2.55.1
+
+          imagePullPolicy: IfNotPresent
+
+          args:
+
+            # --------------------------------------------------------
+            # Configuration
+            # --------------------------------------------------------
+
+            - --config.file=/etc/prometheus/prometheus.yml
+
+
+            # --------------------------------------------------------
+            # Storage
+            # --------------------------------------------------------
+
+            - --storage.tsdb.path=/prometheus
+
+            - --storage.tsdb.retention.time=15d
+
+
+            # --------------------------------------------------------
+            # Lifecycle
+            # --------------------------------------------------------
+
+            - --web.enable-lifecycle
+
+
+            # --------------------------------------------------------
+            # Existing remote-write receiver
+            #
+            # Used by Tempo metrics-generator / remote writers
+            # --------------------------------------------------------
+
+            - --web.enable-remote-write-receiver
+
+
+            # --------------------------------------------------------
+            # IMPORTANT
+            #
+            # Enable OpenTelemetry OTLP metrics receiver
+            #
+            # Endpoint:
+            #
+            # /api/v1/otlp/v1/metrics
+            # --------------------------------------------------------
+
+            - --enable-feature=otlp-write-receiver
+
+
+            # --------------------------------------------------------
+            # Console
+            # --------------------------------------------------------
+
+            - --web.console.libraries=/usr/share/prometheus/console_libraries
+
+            - --web.console.templates=/usr/share/prometheus/consoles
+
+
+          # ----------------------------------------------------------
+          # Port
+          # ----------------------------------------------------------
+
+          ports:
+
+            - name: web
+
+              containerPort: 9090
+
+
+          # ----------------------------------------------------------
+          # Readiness
+          # ----------------------------------------------------------
+
+          readinessProbe:
+
+            httpGet:
+
+              path: /-/ready
+
+              port: web
+
+            initialDelaySeconds: 60
+            timeoutSeconds: 10
+
+
+          # ----------------------------------------------------------
+          # Liveness
+          # ----------------------------------------------------------
+
+          livenessProbe:
+
+            httpGet:
+
+              path: /-/healthy
+
+              port: web
+
+            initialDelaySeconds: 600
+            timeoutSeconds: 10
+
+
+          # ----------------------------------------------------------
+          # Resources
+          # ----------------------------------------------------------
+
+          resources:
+
+            requests:
+
+              cpu: 250m
+
+              memory: 512Mi
+
+            limits:
+
+              memory: 2Gi
+
+
+          # ----------------------------------------------------------
+          # Volumes
+          # ----------------------------------------------------------
+
+          volumeMounts:
+
+            - name: config
+
+              mountPath: /etc/prometheus
+
+
+            - name: rules
+
+              mountPath: /etc/prometheus/rules
+
+
+            - name: data
+
+              mountPath: /prometheus
+
+
+      # ================================================================
+      # Volumes
+      # ================================================================
+
+      volumes:
+
+        - name: config
+
+          configMap:
+
+            name: prometheus-config
+
+
+        - name: rules
+
+          configMap:
+
+            name: prometheus-rules
+
+
+        - name: data
+
+          persistentVolumeClaim:
+
+            claimName: prometheus-data
+
+
+---
+# =====================================================================
+# Prometheus Service
+# =====================================================================
+
+apiVersion: v1
+kind: Service
+
+metadata:
+
+  name: prometheus
+
+  namespace: monitoring
+
+  labels:
+
+    app.kubernetes.io/name: prometheus
+
+spec:
+
+  selector:
+
+    app.kubernetes.io/name: prometheus
+
+  ports:
+
+    - name: web
+
+      port: 9090
+
+      targetPort: web

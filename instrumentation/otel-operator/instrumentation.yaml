@@ -1,0 +1,47 @@
+# =====================================================================
+# OpenTelemetry Operator "Instrumentation" resource.
+#
+# One central definition of HOW to instrument Java apps. Workloads opt in
+# with the pod annotation:
+#     instrumentation.opentelemetry.io/inject-java: "monitoring/rego-instrumentation"
+# The operator's webhook then injects the Java agent init container + env
+# automatically on the next rollout — no app code/image change.
+#
+# service.name is auto-derived per workload by the operator (from the
+# Deployment / labels). k8s namespace/pod/node/container attributes are
+# added downstream by the collector's k8sattributes processor.
+# =====================================================================
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: rego-instrumentation
+  namespace: monitoring
+spec:
+  exporter:
+    # The monitoring-namespace collector (OTLP gRPC). Resolves cross-namespace.
+    endpoint: http://otel-collector.monitoring.svc.cluster.local:4317
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    # Sample 100% to start; lower to e.g. 0.2 for high-traffic prod.
+    type: parentbased_traceidratio
+    argument: "1.0"
+  java:
+    # If your nodes cannot pull ghcr.io, mirror this image and set it here:
+    # image: <your-registry>/autoinstrumentation-java:2.11.0
+    env:
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: grpc
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: otlp
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_INSTRUMENTATION_COMMON_DEFAULT_ENABLED
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_JDBC_DATASOURCE_ENABLED
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_SPRING_WEBMVC_ENABLED
+        value: "true"

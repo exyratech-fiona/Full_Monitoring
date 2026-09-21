@@ -1,0 +1,32 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: rego-instrumentation
+  namespace: monitoring
+spec:
+  exporter:
+    endpoint: http://otel-collector.monitoring:4317
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1.0"
+  java:
+    # If nodes can't pull ghcr.io, mirror this and set:
+    # image: <your-registry>/autoinstrumentation-java:2.11.0
+    env:
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: grpc
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: otlp
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_INSTRUMENTATION_COMMON_DEFAULT_ENABLED
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_JDBC_DATASOURCE_ENABLED
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_SPRING_WEBMVC_ENABLED
+        value: "true"
