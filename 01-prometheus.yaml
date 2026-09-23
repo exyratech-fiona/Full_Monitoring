@@ -249,16 +249,61 @@ data:
 
 
       # --------------------------------------------------------------
-      # PostgreSQL Exporter
+      # PostgreSQL Exporters — one target per database.
+      # Credentials are held by the exporter Deployments, not Prometheus.
       # --------------------------------------------------------------
 
-      - job_name: postgres-exporter
+      - job_name: postgres-exporters-multi
 
         static_configs:
 
           - targets:
 
-              - 'postgres-exporter:9187'
+              - 'postgres-exporter-db1:9187'
+
+            labels:
+
+              database: db1
+
+          - targets:
+
+              - 'postgres-exporter-db2:9187'
+
+            labels:
+
+              database: db2
+
+          - targets:
+
+              - 'postgres-exporter-db3:9187'
+
+            labels:
+
+              database: db3
+
+          - targets:
+
+              - 'postgres-exporter-db4:9187'
+
+            labels:
+
+              database: db4
+
+          - targets:
+
+              - 'postgres-exporter-db5:9187'
+
+            labels:
+
+              database: db5
+
+          - targets:
+
+              - 'postgres-exporter-db6:9187'
+
+            labels:
+
+              database: db6
 
 
       # --------------------------------------------------------------

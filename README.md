@@ -32,7 +32,7 @@ OpenTelemetry Collector ──► Tempo   (traces)
 | `09-prometheus-rules.yaml` | Alert rules | all requested alerts |
 | `10-grafana-datasources.yaml` | Datasource provisioning | correlation wiring |
 | `11-grafana-dashboards.yaml` | Dashboard provisioning | 10 starter dashboards |
-| `12-postgres-exporter.yaml` | PostgreSQL Exporter | **edit the DSN Secret** |
+| `12-postgres-exporter.yaml` | PostgreSQL Exporters | one Secret, Deployment, and Service per database |
 | `13-blackbox-exporter.yaml` | Blackbox Exporter | probes actuator endpoints |
 | `14-rbac.yaml` | ClusterRoles / bindings | Prometheus, OTel, KSM |
 | `15-pvc.yaml` | PersistentVolumeClaims | uses default StorageClass |
@@ -60,11 +60,10 @@ kubectl -n monitoring get pods -w
 ## REQUIRED edits before production
 
 1. **Grafana admin password** — `02-grafana.yaml`, Secret `grafana-admin`.
-2. **PostgreSQL DSN** — `12-postgres-exporter.yaml`, Secret
-   `postgres-exporter-secret` (`DATA_SOURCE_NAME`). Use a read-only role.
-   Format: `postgresql://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=disable`.
-   Also set `replicas: 1` on the Deployment (it's `0` until this is real —
-   see the comment block above it for why).
+2. **PostgreSQL DSNs** — `12-postgres-exporter.yaml`, one Secret per
+   database. Use a read-only role. Format:
+   `postgresql://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=disable`.
+   See `POSTGRES-EXPORTER-GUIDE.md` for adding or removing databases.
 
    **Don't know the real host/credentials?** Check whether a Postgres
    instance is even running *inside* this cluster before looking elsewhere
@@ -169,7 +168,7 @@ Ten starter dashboards are provisioned, sorted into topic folders:
 |--------|-----------|
 | Infrastructure | Kubernetes Cluster, Nodes, Pods |
 | APM | JVM, Spring Boot, HTTP Requests |
-| Database | PostgreSQL *(inactive — see `12-postgres-exporter.yaml`)* |
+| Database | PostgreSQL *(configured through `12-postgres-exporter.yaml`)* |
 | Platform | OpenTelemetry Collector |
 | Tracing | Tempo |
 | Logs | Loki |

@@ -170,7 +170,7 @@ group `by (service_name)` would have nothing to group on.
 | `otel-collector-internal` | `otel-collector:8888` | Collector throughput/drop/queue metrics. Note: **8889 is deliberately NOT scraped** — app metrics now arrive via OTLP push instead |
 | `node-exporter` | k8s `endpoints` SD in `monitoring`, filtered to the node-exporter service + `metrics` port | host CPU/mem/disk/net. Relabels `instance` and `node` to the node name |
 | `kube-state-metrics` | `kube-state-metrics:8080` | K8s object state (pod phase, restarts, waiting reason, node conditions) |
-| `postgres-exporter` | `postgres-exporter:9187` | `pg_up`, connections, transactions — **target has 0 replicas since 2026-08-11, see file 12; this job scrapes nothing** |
+| `postgres-exporter-db1` through `postgres-exporter-db6` | `postgres-exporter-dbN:9187` | `pg_up`, connections, transactions, with a `database` label |
 | `blackbox-http` | `/probe?module=http_2xx&target=…` proxied through `blackbox-exporter:9115` | synthetic probes of `http://rego-app-server.default…:8080/actuator/health` and `/actuator/prometheus`. The relabel chain moves `__address__` into `__param_target`, keeps it as `instance`, then rewrites `__address__` to the exporter |
 | `blackbox-exporter` | `blackbox-exporter:9115` | the exporter's own health |
 | `kubernetes-cadvisor` | `node` SD → `kubernetes.default.svc:443/api/v1/nodes/$node/proxy/metrics/cadvisor` | per-container CPU/memory (`container_cpu_usage_seconds_total`, `container_memory_working_set_bytes`) |
@@ -569,7 +569,7 @@ manually at import time (Import dialog → Folder picker) to sit alongside
 ---
 
 ### `12-postgres-exporter.yaml`
-**Creates:** `Secret/postgres-exporter-secret`, `Deployment` (**`replicas: 0`**), `Service:9187`
+**Creates:** one Secret, Deployment, and Service per PostgreSQL database; each exporter exposes metrics on `:9187`
 
 > ⚠️ **Scaled to zero 2026-08-11 — this exporter has never worked and should not
 > simply be scaled back up.** Its `DATA_SOURCE_NAME` points at
